@@ -1,13 +1,17 @@
 {
   "expo": {
-    "name": "voicenote",
+    "name": "VoiceNote",
     "slug": "voicenote",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "id.voicenote.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Merekam catatan suara untuk ditranskripsi."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,10 +20,32 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "id.voicenote.app",
+      "permissions": [
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "VoiceNote"
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Merekam catatan suara untuk ditranskripsi."
+        }
+      ],
+      [
+        "expo-notifications",
+        {}
+      ]
+    ],
+    "scheme": "voicenote"
   }
 }
