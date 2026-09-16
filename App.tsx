@@ -6,19 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { loadSettings, Settings } from './src/api';
 import { space, spring, type, useTheme } from './src/theme';
+import { LanguageProvider, useLanguage } from './src/i18n';
 import { NotesScreen } from './src/screens/Notes';
 import { RemindersScreen } from './src/screens/Reminders';
 import { SettingsScreen } from './src/screens/Settings';
 
 type Tab = 'notes' | 'reminders' | 'settings';
-const TABS: { key: Tab; label: string; icon: keyof typeof Ionicons.glyphMap; active: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'notes', label: 'Catatan', icon: 'mic-outline', active: 'mic' },
-  { key: 'reminders', label: 'Pengingat', icon: 'notifications-outline', active: 'notifications' },
-  { key: 'settings', label: 'Pengaturan', icon: 'settings-outline', active: 'settings' },
-];
+type TabDef = { key: Tab; label: string; icon: keyof typeof Ionicons.glyphMap; active: keyof typeof Ionicons.glyphMap };
 
 /** Tab icon+label with a spring pop when it becomes active — isolated per-tab so only the switching pair animates. */
-function TabItem({ x, on, sidebar, onPress }: { x: (typeof TABS)[number]; on: boolean; sidebar: boolean; onPress: () => void }) {
+function TabItem({ x, on, sidebar, onPress }: { x: TabDef; on: boolean; sidebar: boolean; onPress: () => void }) {
   const t = useTheme();
   const lift = useSharedValue(on ? 1 : 0);
   useEffect(() => { lift.value = withSpring(on ? 1 : 0, spring); }, [on, lift]);
@@ -36,12 +33,19 @@ function TabItem({ x, on, sidebar, onPress }: { x: (typeof TABS)[number]; on: bo
 
 function Root() {
   const t = useTheme();
+  const { t: tr } = useLanguage();
   const { width } = useWindowDimensions();
   const sidebar = width >= 1024;
   const [settings, setSettings] = useState<Settings | null>(null);
   const [tab, setTab] = useState<Tab>('notes');
 
   useEffect(() => { loadSettings().then((s) => { setSettings(s); if (!s.token) setTab('settings'); }); }, []);
+
+  const TABS: TabDef[] = [
+    { key: 'notes', label: tr.tabNotes, icon: 'mic-outline', active: 'mic' },
+    { key: 'reminders', label: tr.tabReminders, icon: 'notifications-outline', active: 'notifications' },
+    { key: 'settings', label: tr.tabSettings, icon: 'settings-outline', active: 'settings' },
+  ];
 
   if (!settings) return <View style={{ flex: 1, backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={t.accent} /></View>;
 
@@ -69,8 +73,10 @@ function Root() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <Root />
+      <LanguageProvider>
+        <StatusBar style="auto" />
+        <Root />
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

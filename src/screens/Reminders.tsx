@@ -5,14 +5,13 @@ import Animated, { Easing, ZoomIn, useAnimatedStyle, useSharedValue, withRepeat,
 import { api, ApiError, EmailStatus, Event, Settings } from '../api';
 import { ensurePermission, scheduleAll } from '../notify';
 import { radius, space, type, Theme, useTheme } from '../theme';
+import { useLanguage, Dict } from '../i18n';
 import { Banner, Button, Card, Empty, IconButton, Screen, fmtDate } from '../ui';
 
-const PLATFORM: Record<Event['platform'], { label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
-  zoom: { label: 'Zoom', icon: 'videocam-outline' },
-  teams: { label: 'Teams', icon: 'people-outline' },
-  gmeet: { label: 'Google Meet', icon: 'logo-google' },
-  other: { label: 'Meeting', icon: 'calendar-outline' },
+const PLATFORM_ICON: Record<Event['platform'], React.ComponentProps<typeof Ionicons>['name']> = {
+  zoom: 'videocam-outline', teams: 'people-outline', gmeet: 'logo-google', other: 'calendar-outline',
 };
+const platformLabel = (p: Event['platform'], t: Dict) => (p === 'zoom' ? 'Zoom' : p === 'teams' ? 'Teams' : p === 'gmeet' ? 'Google Meet' : t.meetingLabel);
 
 /** Isolated: breathing live-pulse for upcoming meetings, 3D flip-in on mount. */
 const PlatformBadge = memo(function PlatformBadge({ icon, live, t }: { icon: React.ComponentProps<typeof Ionicons>['name']; live: boolean; t: Theme }) {
@@ -31,6 +30,7 @@ const PlatformBadge = memo(function PlatformBadge({ icon, live, t }: { icon: Rea
 
 export function RemindersScreen({ settings }: { settings: Settings }) {
   const t = useTheme();
+  const { t: tr } = useLanguage();
   const [events, setEvents] = useState<Event[]>([]);
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,8 +55,8 @@ export function RemindersScreen({ settings }: { settings: Settings }) {
     try {
       const r = await api.emailSync(settings);
       await load();
-      setMsg({ kind: 'success', text: r.skipped ? 'Sinkronisasi sedang berjalan di server.' : `Dipindai ${r.scanned ?? 0} email, ${r.added ?? 0} meeting baru.` });
-    } catch (e) { setMsg({ text: e instanceof ApiError ? e.message : 'Sinkronisasi gagal.', kind: 'error' }); } finally { setSyncing(false); }
+      setMsg({ kind: 'success', text: r.skipped ? tr.syncRunning : tr.syncResult(r.scanned ?? 0, r.added ?? 0) });
+    } catch (e) { setMsg({ text: e instanceof ApiError ? e.message : tr.syncFailed, kind: 'error' }); } finally { setSyncing(false); }
   }
 
   function remove(id: string) {
@@ -66,14 +66,14 @@ export function RemindersScreen({ settings }: { settings: Settings }) {
       setEvents(next);
       try { await api.deleteEvent(settings, id); await scheduleAll(next, settings.remindMin); } catch (e) { setEvents(prev); setMsg({ text: (e as Error).message, kind: 'error' }); }
     };
-    if (Platform.OS === 'web') { if (confirm('Hapus pengingat ini?')) doIt(); return; }
-    Alert.alert('Hapus pengingat?', undefined, [{ text: 'Batal', style: 'cancel' }, { text: 'Hapus', style: 'destructive', onPress: doIt }]);
+    if (Platform.OS === 'web') { if (confirm(tr.deleteReminderConfirmWeb)) doIt(); return; }
+    Alert.alert(tr.deleteReminderTitle, undefined, [{ text: tr.cancel, style: 'cancel' }, { text: tr.delete, style: 'destructive', onPress: doIt }]);
   }
 
   const now = Date.now();
 
   return (
-    <Screen title="Pengingat" right={<Button small label="Sinkron email" icon="refresh" onPress={sync} loading={syncing} disabled={!status?.configured} />}>
+    <Screen title={tr.remindersTitle} right={<Button small label={tr.syncEmail} icon="refresh" onPress={sync} loading={syncing} disabled={!status?.configured} />}>
       <FlatList
         data={events}
         keyExtractor={(e) => e.id}
@@ -82,33 +82,34 @@ export function RemindersScreen({ settings }: { settings: Settings }) {
         ListHeaderComponent={
           <View style={{ gap: space.sm }}>
             {msg && <Banner text={msg.text} kind={msg.kind} />}
-            {status && !status.configured && <Banner text="Email belum dikonfigurasi di server (IMAP_HOST/USER/PASS di server/.env)." />}
-            {notifOk === false && <Banner text="Izin notifikasi ditolak — pengingat tidak akan muncul." />}
+            {status && !status.configured && <Banner text={tr.emailNotConfigured} />}
+            {notifOk === false && <Banner text={tr.notifDenied} />}
             {status?.configured && (
               <Text style={{ color: t.muted, fontSize: type.tiny }}>
-                Akun {status.account} · sinkron terakhir {status.last_sync ? fmtDate(status.last_sync) : 'belum pernah'} · ingatkan {settings.remindMin} mnt sebelum
+                {tr.accountLine(status.account ?? '', status.last_sync ? fmtDate(status.last_sync) : tr.never, settings.remindMin)}
               </Text>
             )}
           </View>
         }
-        ListEmptyComponent={!loading ? <Empty icon="notifications-outline" title="Belum ada meeting terdeteksi" body="Server membaca inbox secara berkala. Undangan Zoom, Teams, atau Google Meet akan muncul di sini dan menjadi alarm otomatis." /> : null}
+        ListEmptyComponent={!loading ? <Empty icon="notifications-outline" title={tr.noMeetingsTitle} body={tr.noMeetingsBody} /> : null}
         renderItem={({ item, index }) => {
-          const p = PLATFORM[item.platform];
+          const label = platformLabel(item.platform, tr);
+          const icon = PLATFORM_ICON[item.platform];
           const past = new Date(item.starts_at).getTime() < now;
           return (
             <Card index={index} style={{ gap: space.sm, opacity: past ? 0.6 : 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm + 4 }}>
-                <PlatformBadge icon={p.icon} live={!past} t={t} />
+                <PlatformBadge icon={icon} live={!past} t={t} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ color: t.fg, fontSize: type.body, fontWeight: '600', lineHeight: 22 }}>{item.title}</Text>
                   <Text style={{ color: past ? t.muted : t.accent, fontSize: type.small, fontWeight: '500', fontVariant: ['tabular-nums'] }}>
-                    {fmtDate(item.starts_at)}{past ? ' · selesai' : ''}
+                    {fmtDate(item.starts_at)}{past ? tr.ended : ''}
                   </Text>
-                  <Text style={{ color: t.muted, fontSize: type.tiny }} numberOfLines={1}>{p.label} · dari {item.email_from}</Text>
+                  <Text style={{ color: t.muted, fontSize: type.tiny }} numberOfLines={1}>{tr.fromLabel(label, item.email_from)}</Text>
                 </View>
-                <IconButton icon="trash-outline" label="Hapus pengingat" onPress={() => remove(item.id)} color={t.danger} />
+                <IconButton icon="trash-outline" label={tr.deleteReminderTitle.replace('?', '')} onPress={() => remove(item.id)} color={t.danger} />
               </View>
-              {item.link && <Button small kind="ghost" icon="open-outline" label={`Buka ${p.label}`} onPress={() => Linking.openURL(item.link!)} />}
+              {item.link && <Button small kind="ghost" icon="open-outline" label={tr.openPlatform(label)} onPress={() => Linking.openURL(item.link!)} />}
             </Card>
           );
         }}

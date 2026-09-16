@@ -8,6 +8,7 @@ import { NoteColumns } from '../NoteColumns';
 import { NoteHistoryModal } from './NoteHistoryModal';
 import { RecordOrb } from '../RecordOrb';
 import { radius, space, type, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { Banner, Empty, IconButton, Screen, fmtDur } from '../ui';
 
 const MIME_BY_EXT: Record<string, string> = { webm: 'audio/webm', m4a: 'audio/mp4', mp4: 'audio/mp4', '3gp': 'audio/3gpp', wav: 'audio/wav', mp3: 'audio/mpeg', ogg: 'audio/ogg' };
@@ -20,6 +21,7 @@ const haptic = (k: 'light' | 'ok' | 'err') => {
 
 export function NotesScreen({ settings }: { settings: Settings }) {
   const t = useTheme();
+  const { t: tr } = useLanguage();
   const { width } = useWindowDimensions();
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const rec = useAudioRecorderState(recorder, 120);
@@ -40,13 +42,13 @@ export function NotesScreen({ settings }: { settings: Settings }) {
   async function start() {
     setErr(null);
     const perm = await requestRecordingPermissionsAsync();
-    if (!perm.granted) { setErr('Izin mikrofon ditolak. Aktifkan di pengaturan perangkat.'); return; }
+    if (!perm.granted) { setErr(tr.micDenied); return; }
     try {
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record();
       haptic('light');
-    } catch { setErr('Mikrofon tidak tersedia. Di web, buka lewat https:// atau localhost.'); }
+    } catch { setErr(tr.micUnavailable); }
   }
 
   async function stop() {
@@ -55,7 +57,7 @@ export function NotesScreen({ settings }: { settings: Settings }) {
     await recorder.stop();
     await setAudioModeAsync({ allowsRecording: false });
     const uri = recorder.uri;
-    if (!uri) { setErr('Rekaman tidak tersimpan.'); return; }
+    if (!uri) { setErr(tr.recordingNotSaved); return; }
     setBusy(true);
     try {
       const blob = await (await fetch(uri)).blob();
@@ -66,7 +68,7 @@ export function NotesScreen({ settings }: { settings: Settings }) {
       haptic('ok');
     } catch (e) {
       haptic('err');
-      setErr(e instanceof ApiError ? e.message : 'Gagal memproses rekaman.');
+      setErr(e instanceof ApiError ? e.message : tr.processFailed);
     } finally { setBusy(false); }
   }
 
@@ -77,19 +79,19 @@ export function NotesScreen({ settings }: { settings: Settings }) {
 
   return (
     <Screen
-      title="Catatan Suara"
+      title={tr.notesTitle}
       right={
         <View style={{ flexDirection: 'row', gap: space.xs }}>
-          <IconButton icon="time-outline" label="Buka riwayat catatan" onPress={() => setHistoryOpen(true)} />
-          <IconButton icon="refresh" label="Muat ulang catatan" onPress={load} />
+          <IconButton icon="time-outline" label={tr.openHistory} onPress={() => setHistoryOpen(true)} />
+          <IconButton icon="refresh" label={tr.reloadNotes} onPress={load} />
         </View>
       }
     >
       <ScrollView contentContainerStyle={{ padding: space.md, gap: space.sm, paddingBottom: 160, maxWidth: 720, width: '100%', alignSelf: 'center' }}>
-        {err ? <Banner text={err} /> : demoMode ? <Banner kind="info" text="Contoh tampilan. Hubungkan server di Pengaturan untuk catatan sungguhan." /> : null}
+        {err ? <Banner text={err} /> : demoMode ? <Banner kind="info" text={tr.demoBanner} /> : null}
         {notes.length > 0
           ? <NoteColumns notes={notes} t={t} />
-          : !loading && <Empty icon="mic-outline" title="Belum ada catatan" body="Tekan tombol rekam, bicara, lalu lepas. Transkrip, ringkasan, dan daftar tindakan dibuat otomatis." />}
+          : !loading && <Empty icon="mic-outline" title={tr.noNotesTitle} body={tr.noNotesBody} />}
       </ScrollView>
 
       <NoteHistoryModal
@@ -106,7 +108,7 @@ export function NotesScreen({ settings }: { settings: Settings }) {
       <View pointerEvents="box-none" style={[s.dock, wide && { alignItems: 'flex-end', paddingRight: space.xl }]}>
         <View style={[s.dockInner, { backgroundColor: t.bg, borderColor: t.border }]}>
           <Text accessibilityLiveRegion="polite" style={{ color: recording ? t.primary : t.muted, fontSize: type.small, fontVariant: ['tabular-nums'], minWidth: 120, textAlign: 'center' }}>
-            {busy ? 'Memproses…' : recording ? `Merekam ${fmtDur(rec.durationMillis)}` : 'Siap merekam'}
+            {busy ? tr.processing : recording ? tr.recording(fmtDur(rec.durationMillis)) : tr.readyToRecord}
           </Text>
           <RecordOrb recording={recording} busy={busy} onPress={recording ? stop : start} t={t} level={level} />
         </View>

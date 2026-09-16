@@ -30,6 +30,7 @@ In the app, go to **Settings**, enter the server URL and token (matching `APP_TO
 - **Notes**: tap to record, speak, tap to stop. The server sends the audio to Groq Whisper for transcription, then an LLM turns the transcript into a title, summary, and action items. Audio itself is never stored.
 - **Reminders**: the server scans the inbox every `IMAP_POLL_MIN` minutes (or on demand via "Sync email"). An LLM extracts Zoom/Teams/Google Meet meetings from email, and the app schedules a local notification `remindMin` minutes before each one starts (expo-notifications on Android/iOS, the Web Notification API while the tab stays open).
 - Gmail: turn on IMAP and create an App password. Outlook and others: use their own IMAP host.
+- **Indonesian/English language toggle** (`src/i18n.tsx`), persisted on-device.
 
 ## Glossary
 
@@ -85,6 +86,7 @@ Di aplikasi, buka **Pengaturan**, isi URL server dan token (sama dengan `APP_TOK
 - **Catatan**: tekan rekam, bicara, tekan berhenti. Server mengirim audio ke Groq Whisper untuk transkripsi, lalu LLM mengubah transkrip menjadi judul, ringkasan, dan daftar tindakan. Audio sendiri tidak pernah disimpan.
 - **Pengingat**: server memindai inbox tiap `IMAP_POLL_MIN` menit (atau lewat tombol "Sinkron email"). LLM mengekstrak meeting Zoom/Teams/Google Meet dari email, lalu aplikasi menjadwalkan notifikasi lokal `remindMin` menit sebelum jadwal mulai (expo-notifications di Android/iOS, Web Notification API selama tab masih terbuka).
 - Gmail: aktifkan IMAP dan buat App password. Outlook dan lainnya: pakai host IMAP masing-masing.
+- **Toggle bahasa Indonesia/Inggris** (`src/i18n.tsx`), tersimpan di perangkat.
 
 ## Istilah
 

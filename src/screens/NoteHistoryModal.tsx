@@ -3,6 +3,7 @@ import { Alert, FlatList, Modal, Platform, StyleSheet, Text, View } from 'react-
 import { Ionicons } from '@expo/vector-icons';
 import { api, ApiError, Note, Settings } from '../api';
 import { space, type, useTheme } from '../theme';
+import { useLanguage } from '../i18n';
 import { Banner, Card, Empty, Field, IconButton, fmtDate, fmtDur } from '../ui';
 
 /**
@@ -22,6 +23,7 @@ export function NoteHistoryModal({
   demoMode: boolean;
   t: ReturnType<typeof useTheme>;
 }) {
+  const { t: tr } = useLanguage();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -40,23 +42,23 @@ export function NoteHistoryModal({
       if (demoMode) return; // sample data — nothing to delete server-side
       try { await api.deleteNote(settings, id); } catch (e) { onNotesChange(prev); setErr((e as Error).message); }
     };
-    if (Platform.OS === 'web') { if (confirm('Hapus catatan ini?')) doIt(); return; }
-    Alert.alert('Hapus catatan?', 'Tindakan ini tidak bisa dibatalkan.', [{ text: 'Batal', style: 'cancel' }, { text: 'Hapus', style: 'destructive', onPress: doIt }]);
+    if (Platform.OS === 'web') { if (confirm(tr.deleteNoteConfirmWeb)) doIt(); return; }
+    Alert.alert(tr.deleteNoteTitle, tr.deleteNoteMsg, [{ text: tr.cancel, style: 'cancel' }, { text: tr.delete, style: 'destructive', onPress: doIt }]);
   }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined}>
       <View style={{ flex: 1, backgroundColor: t.bg }}>
         <View style={[styles.header, { borderBottomColor: t.border }]}>
-          <Text accessibilityRole="header" style={{ color: t.fg, fontSize: type.title, fontWeight: '700', letterSpacing: -0.6 }}>Riwayat Catatan</Text>
-          <IconButton icon="close" label="Tutup riwayat" onPress={onClose} />
+          <Text accessibilityRole="header" style={{ color: t.fg, fontSize: type.title, fontWeight: '700', letterSpacing: -0.6 }}>{tr.historyTitle}</Text>
+          <IconButton icon="close" label={tr.closeHistory} onPress={onClose} />
         </View>
         <View style={{ paddingHorizontal: space.md, paddingTop: space.md }}>
           <Field
-            label="Cari catatan"
+            label={tr.searchNotes}
             value={query}
             onChangeText={setQuery}
-            placeholder="Judul, ringkasan, atau isi transkrip…"
+            placeholder={tr.searchPlaceholder}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -70,8 +72,8 @@ export function NoteHistoryModal({
           ListEmptyComponent={
             <Empty
               icon={query ? 'search-outline' : 'mic-outline'}
-              title={query ? 'Tidak ditemukan' : 'Belum ada catatan'}
-              body={query ? `Tidak ada catatan yang cocok dengan "${query}".` : 'Rekam catatan pertama Anda untuk melihatnya di sini.'}
+              title={query ? tr.notFoundTitle : tr.noNotesTitle}
+              body={query ? tr.notFoundBody(query) : tr.noNotesYetBody}
             />
           }
           renderItem={({ item, index }) => {
@@ -83,7 +85,7 @@ export function NoteHistoryModal({
                     <Text style={{ color: t.fg, fontSize: type.body, fontWeight: '600', lineHeight: 22 }}>{item.title}</Text>
                     <Text style={{ color: t.muted, fontSize: type.tiny, fontVariant: ['tabular-nums'] }}>{fmtDate(item.created_at)} · {fmtDur(item.duration_ms)}</Text>
                   </View>
-                  <IconButton icon="trash-outline" label="Hapus catatan" onPress={() => remove(item.id)} color={t.danger} />
+                  <IconButton icon="trash-outline" label={tr.deleteNoteLabel} onPress={() => remove(item.id)} color={t.danger} />
                 </View>
                 <Text style={{ color: t.fg, fontSize: type.small, lineHeight: 21 }} numberOfLines={expanded ? undefined : 2}>{item.summary}</Text>
                 {item.actions.length > 0 && (
@@ -94,12 +96,12 @@ export function NoteHistoryModal({
                         <Text style={{ color: t.fg, fontSize: type.small, flex: 1, lineHeight: 20 }}>{a}</Text>
                       </View>
                     ))}
-                    {!expanded && item.actions.length > 2 && <Text style={{ color: t.accent, fontSize: type.tiny }}>+{item.actions.length - 2} tindakan lagi</Text>}
+                    {!expanded && item.actions.length > 2 && <Text style={{ color: t.accent, fontSize: type.tiny }}>{tr.moreActions(item.actions.length - 2)}</Text>}
                   </View>
                 )}
                 {expanded && (
                   <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border, paddingTop: space.sm, gap: space.xs }}>
-                    <Text style={{ color: t.faint, fontSize: type.tiny, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 }}>Transkrip</Text>
+                    <Text style={{ color: t.faint, fontSize: type.tiny, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 }}>{tr.transcriptLabel}</Text>
                     <Text selectable style={{ color: t.muted, fontSize: type.small, lineHeight: 21 }}>{item.transcript}</Text>
                   </View>
                 )}
